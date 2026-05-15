@@ -310,7 +310,11 @@ class MainWindowController: PlayerWindowController {
     }
   }
 
-  var sideBarStatus: SideBarViewType = .hidden
+  var sideBarStatus: SideBarViewType = .hidden {
+    didSet {
+      NotificationCenter.default.post(name: .iinaSidebarStatusChanged, object: nil)
+    }
+  }
 
   enum PIPStatus {
     case notInPIP
@@ -615,7 +619,7 @@ class MainWindowController: PlayerWindowController {
     thumbnailPeekView.isHidden = true
 
     // other initialization
-    titleBarBottomBorder.fillColor = NSColor(named: .titleBarBorder)!
+    titleBarBottomBorder.fillColor = NSColor.titleBarBorder
     cachedScreenCount = NSScreen.screens.count
     // Apply Liquid Glass on macOS 26+ (if enabled); use legacy vibrancy otherwise
     if effectiveLiquidGlass {
@@ -701,6 +705,12 @@ class MainWindowController: PlayerWindowController {
       self.player.sendOSD(.abLoopUpdate(.bSet, VideoTime(seconds).stringRepresentation))
     }
 
+    // Observers for toolbar buttons
+    let notifications: [Notification.Name] = [.iinaPIPStatusChanged, .iinaFullscreenChanged, .iinaSidebarStatusChanged]
+    notifications.forEach {
+      NotificationCenter.default.addObserver(self, selector: #selector(updateOSCToolbarButtons(_:)), name: $0, object: nil)
+    }
+
     player.events.emit(.windowLoaded)
 
     // Must workaround an AppKit defect in some versions of macOS. This defect is known to exist in
@@ -767,6 +777,31 @@ class MainWindowController: PlayerWindowController {
       OSCToolbarButton.setStyle(of: button, buttonType: buttonType, reducedWidth: buttons.count > 4)
       button.action = #selector(self.toolBarButtonAction(_:))
       fragToolbarView.addView(button, in: .trailing)
+    }
+  }
+
+  @objc
+  private func updateOSCToolbarButtons(_ notification: Notification) {
+
+    func highlight(_ button: Preference.ToolBarButton, _ isHighlighted: Bool) {
+      let buttons = fragToolbarView.subviews as! [NSButton]
+      let currentButton = buttons.first(where: { $0.tag == button.rawValue })
+      currentButton?.image = isHighlighted ? button.alternateImage() : button.image()
+    }
+
+    let enable = (notification.userInfo?["enable"] as? Bool ?? false)
+    switch notification.name {
+    case .iinaPIPStatusChanged:
+      highlight(.pip, enable)
+    case .iinaFullscreenChanged:
+      highlight(.fullScreen, enable)
+    case .iinaSidebarStatusChanged:
+      // no userInfo is provided in this notification
+      highlight(.settings, sideBarStatus == .settings)
+      highlight(.plugins, sideBarStatus == .plugins)
+      highlight(.playlist, sideBarStatus == .playlist)
+    default:
+      break
     }
   }
 
@@ -1469,6 +1504,7 @@ class MainWindowController: PlayerWindowController {
     
     updateAdditionalInfo()
     player.events.emit(.windowFullscreenChanged, data: true)
+    NotificationCenter.default.post(name: .iinaFullscreenChanged, object: nil, userInfo: ["enable": true])
   }
 
   /// Called if the window failed to enter full screen mode.
@@ -1633,6 +1669,7 @@ class MainWindowController: PlayerWindowController {
     updateWindowParametersForMPV()
 
     player.events.emit(.windowFullscreenChanged, data: false)
+    NotificationCenter.default.post(name: .iinaFullscreenChanged, object: nil, userInfo: ["enable": false])
   }
 
   /// Called if the window failed to exit full screen mode.
@@ -3379,6 +3416,7 @@ extension MainWindowController: PIPViewControllerDelegate {
     }
 
     player.events.emit(.pipChanged, data: true)
+    NotificationCenter.default.post(name: .iinaPIPStatusChanged, object: self, userInfo: ["enable": true])
   }
 
   func exitPIP() {
@@ -3390,7 +3428,6 @@ extension MainWindowController: PIPViewControllerDelegate {
       // is chosen in this case. See https://bugs.swift.org/browse/SR-8956.
       pip.dismiss(pipVideo!)
     }
-    player.events.emit(.pipChanged, data: false)
   }
 
   func doneExitingPIP() {
@@ -3412,6 +3449,8 @@ extension MainWindowController: PIPViewControllerDelegate {
 
     isWindowMiniaturizedDueToPip = false
     isWindowHidden = false
+    player.events.emit(.pipChanged, data: false)
+    NotificationCenter.default.post(name: .iinaPIPStatusChanged, object: self, userInfo: ["enable": false])
   }
 
   func prepareForPIPClosure(_ pip: PIPViewController) {
