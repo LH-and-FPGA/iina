@@ -11,6 +11,7 @@ import MediaPlayer
 import Sparkle
 
 let IINA_ENABLE_PLUGIN_SYSTEM = true
+let IINA_ENABLE_NEW_SETTINGS = UserDefaults.standard.bool(forKey: "enableNewSettings")
 
 /** Max time interval for repeated `application(_:openFile:)` calls. */
 fileprivate let OpenFileRepeatTime = TimeInterval(0.2)
@@ -109,7 +110,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
   }
 
   // MARK: - Logs
-  private let observedPrefKeys: [Preference.Key] = [.logLevel]
+  private let observedPrefKeys: [Preference.Key] = [.logLevel, .thumbnailWidth]
 
   override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
     guard let keyPath = keyPath, let change = change else { return }
@@ -119,6 +120,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
       if let newValue = change[.newKey] as? Int {
         Logger.Level.preferred = Logger.Level(rawValue: newValue.clamped(to: 0...3))!
       }
+    case Preference.Key.thumbnailWidth.rawValue:
+      ThumbnailCache.clearThumbnailCache()
 
     default:
       return
@@ -232,6 +235,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
     logBuildDetails()
     logPlatformDetails()
     logScreenDetails()
+    Preference.logSettings()
 
     Logger.log("App will launch")
 
@@ -428,6 +432,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
     NSApplication.shared.servicesProvider = self
 
     AppDelegate.shared.menuController?.updatePluginMenu()
+
+    MemoryUsage.shared.logUsage("after launching finished")
   }
 
   /** Show welcome window if `application(_:openFile:)` wasn't called, i.e. launched normally. */
@@ -483,6 +489,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
   func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
     Logger.log("App should terminate")
     isTerminating = true
+    MemoryUsage.shared.logUsage("before terminating")
 
     // Normally termination happens fast enough that the user does not have time to initiate
     // additional actions, however to be sure shutdown further input from the user.
@@ -905,6 +912,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
       for query in queries {
         if query.name.hasPrefix("mpv_") {
           let mpvOptionName = String(query.name.dropFirst(4))
+          guard !mpvOptionName.contains("input-command") else {
+            Logger.log("mpv option \(mpvOptionName) rejected when parsing URL", level: .warning)
+            continue
+          }
           guard let mpvOptionValue = query.value else { continue }
           Logger.log("Setting \(mpvOptionName) to \(mpvOptionValue)")
           player.mpv.setString(mpvOptionName, mpvOptionValue)
@@ -962,7 +973,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
   }
 
   @IBAction func showPreferences(_ sender: AnyObject) {
-    preferenceWindowController.showWindow(self)
+    if IINA_ENABLE_NEW_SETTINGS {
+      SettingsWindow.default.show()
+    } else {
+      preferenceWindowController.showWindow(self)
+    }
   }
 
   @objc func showPluginPreferences(_ sender: NSMenuItem) {
@@ -1003,6 +1018,37 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
 
   @IBAction func websiteAction(_ sender: AnyObject) {
     NSWorkspace.shared.open(URL(string: AppData.websiteLink)!)
+  }
+
+  @objc func reloadAllPlugins(_ sender: NSMenuItem) {
+    // Remove the developer tool menu item that retains the plugin instance
+    AppDelegate.shared.menuController.pluginMenu.items
+      .compactMap { $0.submenu }.flatMap { $0.items }
+      .forEach { $0.representedObject = nil }
+    AppDelegate.shared.menuController.pluginMenu.removeAllItems()
+
+    for player in PlayerCore.playerCores {
+      player.clearPlugins()
+    }
+
+    JavascriptPlugin.recreateAllPlugins()
+    JavascriptPlugin.loadGlobalInstances()
+
+    for player in PlayerCore.playerCores {
+      for plugin in JavascriptPlugin.plugins {
+        player.reloadPlugin(plugin, forced: true)
+      }
+      // Try to emit the events that are already emitted.
+      // Of course this is not exhaustive, so users shouldn't rely on this function
+      if player.mainWindow.loaded {
+        player.events.emit(.windowLoaded)
+      }
+      player.events.emit(.mpvInitialized)
+      if player.info.state == .playing {
+        player.events.emit(.fileLoaded)
+        player.events.emit(.fileStarted)
+      }
+    }
   }
 
   /// Dump contents of all player cores to a txt file. Strictly for debugging. No localization needed.
@@ -1377,7 +1423,7 @@ class RemoteCommandController {
 
     // For each command, apply a configured keybinding or fallback to default values.
     remoteCommand.playCommand.addTarget { _ in
-      if let action = PlayerCore.keyBindings["PLAY"] {
+      if let action = PlayerCore.keyBindings["PLAYONLY"] {
         PlayerCore.lastActive.mainWindow.handleKeyBinding(action)
       } else {
         PlayerCore.lastActive.resume()
@@ -1385,7 +1431,7 @@ class RemoteCommandController {
       return .success
     }
     remoteCommand.pauseCommand.addTarget { _ in
-      if let action = PlayerCore.keyBindings["PAUSE"] {
+      if let action = PlayerCore.keyBindings["PAUSEONLY"] {
         PlayerCore.lastActive.mainWindow.handleKeyBinding(action)
       } else {
         PlayerCore.lastActive.pause()

@@ -270,7 +270,7 @@ class QuickSettingViewController: NSViewController, NSTableViewDataSource, NSTab
     }
 
     // colors
-    withAllTableViews { tableView, _ in tableView.backgroundColor = NSColor(named: .sidebarTableBackground)! }
+    withAllTableViews { tableView, _ in tableView.backgroundColor = NSColor.sidebarTableBackground }
 
     if pendingSwitchRequest == nil {
       updateTabActiveStatus()
@@ -317,10 +317,7 @@ class QuickSettingViewController: NSViewController, NSTableViewDataSource, NSTab
     }
     observe(.iinaVIDChanged) { [unowned self] _ in self.videoTableView.reloadData() }
     observe(.iinaAIDChanged) { [unowned self] _ in self.audioTableView.reloadData() }
-    observe(.iinaSIDChanged) { [unowned self] _ in
-      self.subTableView.reloadData()
-      self.secSubTableView.reloadData()
-    }
+    observe(.iinaSIDChanged) { [unowned self] _ in self.reload() }
     observe(.iinaSecondSubVisibilityChanged) { [unowned self] _ in secHideSwitch.state = player.info.isSecondSubVisible ? .on : .off }
     observe(.iinaSubVisibilityChanged) { [unowned self] _ in hideSwitch.state = player.info.isSubVisible ? .on : .off }
   }
@@ -442,6 +439,7 @@ class QuickSettingViewController: NSViewController, NSTableViewDataSource, NSTab
   }
 
   private func updateVideoTabControl() {
+    guard player.info.state.active else { return }
     if let index = AppData.aspectsInPanel.firstIndex(of: player.info.unsureAspect) {
       aspectSegment.selectedSegment = index
     } else {
@@ -470,6 +468,7 @@ class QuickSettingViewController: NSViewController, NSTableViewDataSource, NSTab
   }
 
   private func updateAudioTabControl() {
+    guard player.info.state.active else { return }
     let audioDelay = player.mpv.getDouble(MPVOption.Audio.audioDelay)
     audioDelaySlider.doubleValue = audioDelay
     customAudioDelayTextField.doubleValue = audioDelay
@@ -477,11 +476,11 @@ class QuickSettingViewController: NSViewController, NSTableViewDataSource, NSTab
   }
 
   private func updateSubTabControl() {
+    guard player.info.state.active else { return }
     hideSwitch.state = player.info.isSubVisible ? .on : .off
     secHideSwitch.state = player.info.isSecondSubVisible ? .on : .off
 
     if let currSub = player.info.currentTrack(.sub) {
-      // FIXME: CollorWells cannot be disable?
       let enableTextSettings = !(currSub.isAssSub || currSub.isImageSub)
       [subTextColorWell, subTextSizePopUp, subTextBgColorWell, subTextBorderColorWell, subTextBorderWidthPopUp, subTextFontBtn].forEach { $0.isEnabled = enableTextSettings }
     }

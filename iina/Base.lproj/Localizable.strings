@@ -13,9 +13,11 @@
 "general.logout" = "Logout";
 "general.ok" = "OK";
 "general.cancel" = "Cancel";
+"general.done" = "Done";
 "general.username" = "Username";
 "general.password" = "Password";
 "general.na" = "N/A";
+"general.no_result" = "No Result";
 
 "input.value_is_empty" = "Value cannot be empty.";
 "input.already_exists" = "Value already exists.";
@@ -137,6 +139,9 @@
 "osd.canceled" = "Canceled";
 "osd.cannot_connect" = "Cannot connect";
 "osd.timed_out" = "Timed Out";
+"osd.sub_quota_exceeded" = "Subtitle download limit reached";
+"osd.sub_quota_exceeded.detail" = "Try again after %@";
+"osd.sub_quota_exceeded.detail_unknown" = "Try again later";
 "osd.filter_added" = "Added Filter: %@";
 "osd.filter_removed" = "Removed Filter";
 "osd.file_loop" = "Loop Single File";
@@ -145,8 +150,8 @@
 
 "preference.title" = "Settings";
 "preference.general" = "General";
-"preference.ui" = "UI";
-"preference.video_audio" = "Video/Audio";
+"preference.ui" = "Interface";
+"preference.video_audio" = "Video & Audio";
 "preference.subtitle" = "Subtitle";
 "preference.network" = "Network";
 "preference.control" = "Control";
@@ -277,6 +282,8 @@
 "alert.add_filter.message" = "Please enter a filter string in format of mpv's vf or af command.";
 
 "alert.keybinding_config.error" = "Error parsing keybinding configuration file \"%@\"! Fallback to IINA Default keybinding setting. Please check your configuration.";
+"alert.delete_keybindingset.title" = "Delete Key Binding Set";
+"alert.delete_keybindingset.message" = "Are you sure to delete this key binding set?";
 
 "alert.extra_option.cannot_read" = "Cannot read user defined extra mpv options.";
 "alert.extra_option.empty" = "Key or value cannot be empty!";
@@ -333,6 +340,10 @@
 "alert.restore_alerts.title" = "Restore Suppressed Alerts";
 "alert.restore_alerts.message" = "Are you sure you want to restore suppressed alerts?";
 
+"alert.cleared" = "Cleared.";
+"alert.restored" = "Restored.";
+"alert.custom" = "%@";
+
 "alert.nothing_to_open" = "Nothing to open.";
 
 "alert.no_video_track" = "There is no video track.";
@@ -356,6 +367,8 @@
 "alert.plugin_update_found.message" = "The latest version is %@. You have %@. Would you like to update?";
 "alert.plugin_permission" = "This plugin requires the following permissions. Please review them before proceeding.";
 "alert.plugin_permission_added" = "This update requires additional permissions. Please review them before proceeding.";
+"alert.install_plugin_macos_11.title" = "Install plugin from GitHub";
+"alert.install_plugin_macos_11.message" = "Use the format user/repo or enter the full GitHub URL. The plugin store is not available on macOS 11. A newer system is recommended for the best experience.";
 
 "playlist.total_length" = "%@ in total";
 "playlist.total_length_with_selected" = "%@ of %@ selected";
@@ -465,3 +478,19 @@
 "plugin.install_error.cannot_load" = "IINA cannot load this plugin. It might be in the wrong format.";
 "plugin.check_for_updates" = "Check for Updates";
 "plugin.updating" = "Downloading update…";
+
+// Log window
+"logwindow.all_subsystems" = "All subsystems";
+"logwindow.title" = "Log Viewer";
+"logwindow.time" = "Time";
+"logwindow.subsystem" = "Subsystem";
+"logwindow.message" = "Message";
+"logwindow.now" = "Now";
+"logwindow.now.desc" = "Follow latest logs";
+"logwindow.log_level" = "Log level";
+"logwindow.save" = "Save";
+"logwindow.save_filtered" = "Save filtered logs…";
+"logwindow.filter" = "Filter";
+"logwindow.clear_subsystem_selections" = "Clear Selections";
+"logwindow.copy" = "Copy";
+"logwindow.logs" = "logs";
